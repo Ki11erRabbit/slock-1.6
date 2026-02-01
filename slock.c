@@ -267,10 +267,12 @@ readpw(Display *dpy, struct xrandr *rr, struct lock **locks, int nscreens,
 				}
 				XSync(dpy, False);
 
-				if (retval == PAM_SUCCESS)
+				if (retval == PAM_SUCCESS) {
 					retval = pam_authenticate(pamh, 0);
-				if (retval == PAM_SUCCESS)
+                }
+				if (retval == PAM_SUCCESS) {
 					retval = pam_acct_mgmt(pamh, 0);
+                }
 
 				running = 1;
 				if (retval == PAM_SUCCESS)
@@ -504,7 +506,15 @@ main(int argc, char **argv) {
 		die("slock: cannot open display\n");
 
 	/* drop privileges */
-	if (setgroups(0, NULL) < 0)
+    gid_t groups[2] = { dgid, 0 };
+    int ngroups = 1;
+    
+    struct group *shadow_grp = getgrnam("shadow");
+    if (shadow_grp) {
+        groups[ngroups++] = shadow_grp->gr_gid;
+    }
+
+	if (setgroups(ngroups, groups) < 0)
 		die("slock: setgroups: %s\n", strerror(errno));
 	if (setgid(dgid) < 0)
 		die("slock: setgid: %s\n", strerror(errno));
