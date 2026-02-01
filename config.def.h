@@ -3,11 +3,11 @@ static const char *user  = "slock";
 static const char *group = "slock";
 
 static const char *colorname[NUMCOLS] = {
-	[INIT] =   "black",     /* after initialization */
-	[INPUT] =  "#005577",   /* during input */
-	[FAILED] = "#CC3333",   /* wrong password */
-	[CAPS] = "red",         /* CapsLock on */
-	[PAM] =    "#9400D3",   /* waiting for PAM */
+	[INIT] =   "#eff1f5",     /* after initialization */
+	[INPUT] =  "#ea76cb",   /* during input */
+	[FAILED] = "#d20f39",   /* wrong password */
+	[CAPS] = "#e64553",         /* CapsLock on */
+	[PAM] =    "#40a02b",   /* waiting for PAM */
 };
 
 /* treat a cleared input like a wrong password (color) */
