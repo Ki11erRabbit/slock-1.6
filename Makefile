@@ -39,6 +39,8 @@ install: all
 	mkdir -p ${DESTDIR}${MANPREFIX}/man1
 	sed "s/VERSION/${VERSION}/g" <slock.1 >${DESTDIR}${MANPREFIX}/man1/slock.1
 	chmod 644 ${DESTDIR}${MANPREFIX}/man1/slock.1
+	cp -f slock_pam /etc/pam.d/slock
+	chmod 755 /etc/pam.d/slock
 
 uninstall:
 	rm -f ${DESTDIR}${PREFIX}/bin/slock

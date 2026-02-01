@@ -14,10 +14,10 @@ static const char *colorname[NUMCOLS] = {
 static const int failonclear = 1;
 
 /* PAM service that's used for authentication */
-static const char* pam_service = "login";
+static const char* pam_service = "slock";
 
 /* time in seconds before the monitor shuts down */
-static const int monitortime = 5;
+static const int monitortime = 30;
 
 /* insert grid pattern with scale 1:1, the size can be changed with logosize */
 static const int logosize = 75;
