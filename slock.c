@@ -89,8 +89,11 @@ pam_conv(int num_msg, const struct pam_message **msg,
 {
 	int retval = PAM_CONV_ERR;
 	for(int i=0; i<num_msg; i++) {
-		if (msg[i]->msg_style == PAM_PROMPT_ECHO_OFF &&
-				strncmp(msg[i]->msg, "Password: ", 10) == 0) {
+		if (msg[i]->msg_style == PAM_PROMPT_ECHO_OFF) {
+			/* Accept any echo-off prompt (password prompt), regardless of
+			 * the exact prompt string. This ensures compatibility across
+			 * distros where the prompt text may differ (e.g. Gentoo vs
+			 * Arch/CachyOS). */
 			struct pam_response *resp_msg = malloc(sizeof(struct pam_response));
 			if (!resp_msg)
 				die("malloc failed\n");
@@ -103,6 +106,10 @@ pam_conv(int num_msg, const struct pam_message **msg,
 			resp_msg->resp = password;
 			resp[i] = resp_msg;
 			retval = PAM_SUCCESS;
+		} else if (msg[i]->msg_style == PAM_ERROR_MSG) {
+			fprintf(stderr, "slock: pam error: %s\n", msg[i]->msg);
+		} else if (msg[i]->msg_style == PAM_TEXT_INFO) {
+			fprintf(stderr, "slock: pam info: %s\n", msg[i]->msg);
 		}
 	}
 	return retval;
@@ -480,7 +487,15 @@ main(int argc, char **argv) {
 		usage();
 	} ARGEND
 
-	/* validate drop-user and -group */
+	/* Save the real uid/gid of the invoking user before any privilege
+	 * changes. We drop back to this user after locking so that
+	 * unix_chkpwd will accept our authentication requests - it requires
+	 * the calling process to be either root or the user being checked. */
+	uid_t invoking_uid = getuid();
+	gid_t invoking_gid = getgid();
+
+	/* validate drop-user and -group (slock user) - still needed to
+	 * verify the config is sane, but we won't actually drop to it */
 	errno = 0;
 	if (!(pwd = getpwnam(user)))
 		die("slock: getpwnam %s: %s\n", user,
@@ -496,27 +511,24 @@ main(int argc, char **argv) {
 	dontkillme();
 #endif
 
-	/* the contents of hash are used to transport the current user name */
+	/* the contents of hash are used to transport the current user name.
+	 * Must be called before dropping privileges. */
 	hash = gethash();
 	errno = 0;
 
 	if (!(dpy = XOpenDisplay(NULL)))
 		die("slock: cannot open display\n");
 
-	/* drop privileges */
-    gid_t groups[2] = { dgid, 0 };
-    int ngroups = 1;
-    
-    struct group *shadow_grp = getgrnam("shadow");
-    if (shadow_grp) {
-        groups[ngroups++] = shadow_grp->gr_gid;
-    }
-
-	if (setgroups(ngroups, groups) < 0)
+	/* Drop back to the invoking user rather than the slock system user.
+	 * This is required for unix_chkpwd to authenticate us: it checks
+	 * that the calling process uid matches the user being authenticated.
+	 * On Gentoo with HAVE_SHADOW_H the hash was already read above while
+	 * still root, so direct shadow comparison still works there too. */
+	if (setgroups(1, &invoking_gid) < 0)
 		die("slock: setgroups: %s\n", strerror(errno));
-	if (setgid(dgid) < 0)
+	if (setgid(invoking_gid) < 0)
 		die("slock: setgid: %s\n", strerror(errno));
-	if (setuid(duid) < 0)
+	if (setuid(invoking_uid) < 0)
 		die("slock: setuid: %s\n", strerror(errno));
 
 	/*Create screenshot Image*/
